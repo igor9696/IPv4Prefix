@@ -47,6 +47,7 @@ TEST(ipv4prefix, AddFirstPrefix_IncrementCounterAndReturnZero_PrefixIsRoot)
 {
     int ret = 0;
     rbTree = createRedBlackTree();
+    EXPECT_TRUE(rbTree != NULL);
 
     ret = add(541097984, 20);
 
@@ -131,6 +132,7 @@ TEST(ipv4prefix, GetTheSmallestPrefixForGivenIpAddr_WithDuplicatedNodes)
     rbTree = createRedBlackTree();
     
     // nodes with the same range->low value
+    add(541097984, 4);
     add(541097984, 8);
     add(541097984, 12);
     add(541097984, 16); 
@@ -138,12 +140,44 @@ TEST(ipv4prefix, GetTheSmallestPrefixForGivenIpAddr_WithDuplicatedNodes)
     // nodes with the same range->low value
     add(541097984, 20);
     add(541097984, 24);
+    add(540097984, 16);
     add(541097984, 28);
     add(541097984, 30);
 
+    add(540097984, 20);
+    add(540097984, 24);
+
     rbNode* node = getSmallestPrefixForIp(rbTree, 541100000);
     EXPECT_TRUE(node != NULL);
-    EXPECT_EQ(30, node->prefix.short_mask);
+    EXPECT_EQ(16, node->prefix.short_mask);
 
+    deleteRedBlackTree(rbTree);
+}
+
+TEST(ipv4prefix, DeleteNodeWithDuplicates_NodeReplacedByFirstElementFromTheList)
+{
+    int ret = 0;
+    rbTree = createRedBlackTree();
+
+    add(541097984, 4);
+    // duplicates
+    add(541097984, 5);
+    add(541097984, 6);
+    add(541097984, 7);
+
+    EXPECT_TRUE(rbTree->_root->dNodesCnt == 3);
+    EXPECT_TRUE(rbTree->_cnt == 4);
+    
+    rbNode* firstdNodePtr = rbTree->_root->dNodes->node;
+    rbNode* secondNodePtr = rbTree->_root->dNodes->next->node;
+    rbDuplicateNode* duplNodeStructurePtr = rbTree->_root->dNodes->next; 
+
+    // delete node that holds all of the duplicates
+    del(541097984, 4);
+
+    EXPECT_TRUE(firstdNodePtr == rbTree->_root);
+    EXPECT_TRUE(rbTree->_root->dNodes->node == secondNodePtr);
+    EXPECT_TRUE(rbTree->_root->dNodes == duplNodeStructurePtr);
+    EXPECT_TRUE(rbTree->_root->dNodesCnt == 2);
     deleteRedBlackTree(rbTree);
 }

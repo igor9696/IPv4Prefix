@@ -45,7 +45,6 @@ int add(unsigned int base, char mask)
         return -1;
     }
 
-    rbTree->_cnt++;
     return 0;
 }
 
@@ -56,7 +55,6 @@ int del(unsigned int base, char mask)
     setupIpDataInNode(&node, base, mask);
     if (NULL != (foundNode = searchRbNode(rbTree, &node))) {
         deleteRbNode(rbTree, foundNode);
-        freeRbNode(foundNode);
     } else {
         return -1;
     }

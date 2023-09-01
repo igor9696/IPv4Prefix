@@ -42,10 +42,9 @@ typedef struct sRedBlackTree
 
 /* FUNCTIONS */
 sRedBlackTree* createRedBlackTree();
-void deleteRedBlackTree(sRedBlackTree* rbTree);
-rbNode* allocRbNode();
-void freeRbNode(rbNode* node);
 int insertRbNode(sRedBlackTree* rbTree, rbNode* node);
+void deleteRedBlackTree(sRedBlackTree* rbTree);
 void deleteRbNode(sRedBlackTree* rbTree, rbNode* node);
+rbNode* allocRbNode();
 rbNode* searchRbNode(sRedBlackTree* rbTree, rbNode* node);
-rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, int ip);
+rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, unsigned int ip);

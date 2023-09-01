@@ -7,12 +7,23 @@
 
 static rbDuplicateNode* allocDuplicateNode()
 {
-    return (rbDuplicateNode*)malloc(sizeof(rbDuplicateNode));
+    return (rbDuplicateNode*)calloc(1, sizeof(rbDuplicateNode));
 }
 
-static void deallocDuplicateNode()
+static void deallocDuplicateNodes(rbNode* node)
 {
-    // TODO
+    while (node->dNodes != NULL) {
+        rbDuplicateNode* prevdNode = node->dNodes;
+        free(node->dNodes->node);
+        node->dNodes = node->dNodes->next;
+        free(prevdNode);
+        printf("Duplicate node dealocated!\n");
+    }
+}
+
+static void freeRbNode(rbNode* node)
+{   
+    free(node);
 }
 
 static void freeAllNodesInTree(rbNode* node)
@@ -20,7 +31,10 @@ static void freeAllNodesInTree(rbNode* node)
     if (node == NULL) return;
     freeAllNodesInTree(node->left);
     freeAllNodesInTree(node->right);
-    free(node);
+    if (node->dNodes != NULL) {
+        deallocDuplicateNodes(node);
+    }
+    freeRbNode(node);
 }
 
 sRedBlackTree* createRedBlackTree()
@@ -37,30 +51,46 @@ void deleteRedBlackTree(sRedBlackTree* rbTree)
 
 rbNode* allocRbNode()
 {
-    return (rbNode*)malloc(sizeof(rbNode));
-}
-
-void freeRbNode(rbNode* node)
-{
-    free(node);
+    return (rbNode*)calloc(1, sizeof(rbNode));
 }
 
 static void setMaxValInRbNode(rbNode* node)
 {
     unsigned int max = 0;
-    if (node->range.high >= node->left->range.high && 
-        node->range.high >= node->right->range.high)
+    if(node->left == NULL && node->right == NULL)
     {
-        max = node->range.high;
+        return ;
     }
-    else if (node->left->range.high >= node->range.high &&
-             node->left->range.high >= node->range.high)
+    else if (node->left != NULL && node->right != NULL)
     {
-        max = node->left->range.high;
+        if (node->range.high >= node->left->range.high && 
+            node->range.high >= node->right->range.high)
+        {
+            max = node->range.high;
+        }
+        else if (node->left->range.high >= node->range.high &&
+                    node->left->range.high >= node->range.high)
+        {
+            max = node->left->range.high;
+        }
+        else
+        {
+            max = node->right->range.high;
+        }
     }
-    else
-    {
-        max = node->right->range.high;
+    else if(node->left == NULL) {
+        if (node->range.high > node->right->range.high) {
+            max = node->range.high;
+        } else {
+            max = node->right->range.high;
+        }
+    }
+    else {
+        if (node->range.high > node->left->range.high) {
+            max = node->range.high;
+        } else {
+            max = node->left->range.high;
+        }
     }
 
     node->maxVal = max;
@@ -102,22 +132,23 @@ static int rightRotateRbNode(sRedBlackTree* rbTree, rbNode* x)
     if (y == NULL) {
         return -1;
     }
-    y->left = x->right;
-    if (x->right != NULL) {
-        x->right->parent = y;
+    x->left = y->right;
+    if (y->right != NULL) {
+        y->right->parent = x;
     }
-    x->parent = y->parent;
-    if (y->parent == NULL) {
-        rbTree->_root = x;
+    y->parent = x->parent;
+
+    if (x->parent == NULL) {
+        rbTree->_root = y;
     }
-    else if (y == y->parent->left) {
-        y->parent->left = x;
+    else if (x == x->parent->left) {
+        x->parent->left = y;
     }
     else {
-        y->parent->right = x;
+        x->parent->right = y;
     }
-    x->right = y;
-    y->parent = x;
+    y->right = x;
+    x->parent = y;
 
     setMaxValInRbNode(x);
     setMaxValInRbNode(y);
@@ -127,52 +158,48 @@ static int rightRotateRbNode(sRedBlackTree* rbTree, rbNode* x)
 /* func is fixing up violations of red-black properties 
 *  that occured after RED node insertion */
 static void insertRbNodeFixup(sRedBlackTree* rbTree, rbNode* node)
-{
-    if(node->parent == NULL) {
-        return;
-    }
-    
+{    
     while ( node->parent != NULL &&
             node->parent->parent != NULL &&
             node->parent->color == RED)
     {
         rbNode* y = NULL;
-        if (node->parent->parent->left != NULL &&
-            node->parent == node->parent->parent->left) {
+        if (node->parent == node->parent->parent->left) {
 
             y = node->parent->parent->right;
-            if (y->color == RED) {
+            if (y != NULL && y->color == RED) {
                 node->parent->color = BLACK;
                 y->color = BLACK;
                 node->parent->parent->color = RED;
                 node = node->parent->parent;
+                continue;
             }
             else if (node == node->parent->right) {
                 node = node->parent;
                 leftRotateRbNode(rbTree, node);
-                node->parent->color = BLACK;
-                node->parent->parent->color = RED;
-                rightRotateRbNode(rbTree, node);
             }
+            node->parent->color = BLACK;
+            node->parent->parent->color = RED;
+            rightRotateRbNode(rbTree, node->parent->parent);
         }
-        else if (node->parent->parent->right != NULL && 
-                node->parent == node->parent->parent->right){
+        else {
 
             y = node->parent->parent->left;
-            if (y->color == RED) {
+
+            if (y != NULL && y->color == RED) {
                 node->parent->color = BLACK;
                 y->color = BLACK;
                 node->parent->parent->color = RED;
                 node = node->parent->parent;
+                continue;
             }
             else if (node == node->parent->left) {
                 node = node->parent;
-                leftRotateRbNode(rbTree, node);
-                node->parent->color = BLACK;
-                node->parent->parent->color = RED;
                 rightRotateRbNode(rbTree, node);
             }
-
+            node->parent->color = BLACK;
+            node->parent->parent->color = RED;
+            leftRotateRbNode(rbTree, node->parent->parent);
         }
     }
 
@@ -231,6 +258,7 @@ int insertRbNode(sRedBlackTree* rbTree, rbNode* node)
             if (x->range.high == node->range.high)
             {
                 // node already exists
+                printf("[DBG] Same node already exists, ret -1\n");
                 return -1;
             }
 
@@ -244,6 +272,7 @@ int insertRbNode(sRedBlackTree* rbTree, rbNode* node)
                 if (it->node->range.high == node->range.high)
                 {
                     // node already exists
+                    printf("[DBG] Same node already exists, ret -1\n");
                     return -1;
                 }    
                 it = it->next;
@@ -256,19 +285,20 @@ int insertRbNode(sRedBlackTree* rbTree, rbNode* node)
                 it->node = node;
                 it->next = NULL;
                 x->dNodesCnt++;
-
+                
                 if (x->dNodes == NULL) {
                     x->dNodes = it;
                 } else {
                     prev_it->next = it;
                 }
-                return 0;
             }
             else {
                 return -1;
             }
         } 
     }
+
+    rbTree->_cnt++;
     return 0;
 }
 
@@ -278,7 +308,7 @@ static void transplantRbNodes(sRedBlackTree* rbTree, rbNode* u, rbNode* v)
     {
         return;
     }
-
+    
     if (u->parent == NULL) {
         rbTree->_root = v;
     }
@@ -331,13 +361,13 @@ static void deleteRbNodeFixup(sRedBlackTree* rbTree, rbNode* node)
                 w->left->color == BLACK;
                 w->color = RED;
                 rightRotateRbNode(rbTree, w);
-                w = node->parent->right;
-                w->color = node->parent->color;
-                node->parent->color = BLACK;
-                w->right->color = BLACK;
-                leftRotateRbNode(rbTree, node->parent);
-                node = rbTree->_root;
             }
+            w = node->parent->right;
+            w->color = node->parent->color;
+            node->parent->color = BLACK;
+            w->right->color = BLACK;
+            leftRotateRbNode(rbTree, node->parent);
+            node = rbTree->_root;
         }
         else {
             w = node->parent->left;
@@ -375,7 +405,44 @@ void deleteRbNode(sRedBlackTree* rbTree, rbNode* node)
     rbNodeColor y_orginall_color = y->color;
     
     if (rbTree->_cnt == 1) {
+        printf("Deleting root node!\n");
         rbTree->_root = NULL;
+        goto Cleanup;
+    }
+
+    // if node has allocated duplicates, then replace node with first element from the list
+    if (node->dNodesCnt != 0) {
+        rbDuplicateNode* s = node->dNodes; // save address for first dNode structure
+        rbNode* tmp = node->dNodes->node;
+        tmp->left = node->left;
+        tmp->right = node->right;
+
+        tmp->dNodesCnt = node->dNodesCnt - 1;
+        tmp->dNodes = node->dNodes->next;
+
+        if (node->left != NULL) {
+            node->left->parent = tmp;
+        }
+        if (node->right != NULL) {
+            node->right->parent = tmp;
+        }
+
+        if (node->parent != NULL) {
+            tmp->parent = node->parent;
+            if (node->parent->left == node) {
+                node->parent->left = tmp;
+            }
+            else {
+                node->parent->right = tmp;
+            }
+        }
+        else {
+            rbTree->_root = tmp;
+        }
+
+        // deallocate rbDuplicateNode structure
+        free(s);
+        goto Cleanup;
     }
 
     if (node->left == NULL) {
@@ -408,6 +475,9 @@ void deleteRbNode(sRedBlackTree* rbTree, rbNode* node)
     {
         deleteRbNodeFixup(rbTree, x);
     }
+
+Cleanup:
+    freeRbNode(node);
     rbTree->_cnt--;
 }
 
@@ -449,7 +519,7 @@ rbNode* searchRbNode(sRedBlackTree* rbTree, rbNode* node)
     return NULL;
 }
 
-rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, int ip)
+rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, unsigned int ip)
 {
     size_t prefix_range_diff_min = __SIZE_MAX__;
     rbNode* nodeMinPrefix = NULL;
@@ -457,7 +527,7 @@ rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, int ip)
 
     while(x != NULL ) {
 
-        if (ip < x->range.low && ip > x->range.high) {
+        if (ip < x->range.low || ip > x->range.high) {
 
             if (x->left != NULL && x->left->maxVal >= ip) 
             {
@@ -468,7 +538,12 @@ rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, int ip)
             }
         }
         else { // matching interval found
-
+            printf("[DBG] Found node params: range: %u - %u, mask: %u, range diff: %u, ip: %u\n",
+                x->range.low, 
+                x->range.high,
+                x->prefix.short_mask,
+                x->range.diff,
+                ip);
             if (x != NULL && (x->range.diff < prefix_range_diff_min))
             {
                 prefix_range_diff_min = x->range.diff;
@@ -478,11 +553,12 @@ rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, int ip)
             // check if found node has duplicates
             // and if yes then we need to also iterate trough list and check for smallest range diff
             if (x->dNodesCnt != 0 && x->dNodes != NULL) {
-                printf("debug: searching across duplicates..\n");
                 rbDuplicateNode* y = x->dNodes;
                 while(y != NULL) {
                     
-                    if (y->node->range.diff < prefix_range_diff_min) {
+                    if (y->node->range.diff < prefix_range_diff_min && 
+                        y->node->range.high >= ip) {
+
                         prefix_range_diff_min = y->node->range.diff;
                         nodeMinPrefix = y->node;
                     }
@@ -500,5 +576,13 @@ rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, int ip)
         }
     }
     
+    if (nodeMinPrefix != NULL) {
+        printf("[DBG] Picked node params: range: %u - %u, mask: %u, range diff: %u, ip: %u\n",
+                nodeMinPrefix->range.low, 
+                nodeMinPrefix->range.high,
+                nodeMinPrefix->prefix.short_mask,
+                nodeMinPrefix->range.diff,
+                ip);
+    }
     return nodeMinPrefix;
 }   

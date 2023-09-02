@@ -7,7 +7,6 @@ typedef enum rbNodeColor {
     RED
 } rbNodeColor;
 
-typedef struct rbDuplicateNode rbDuplicateNode;
 typedef struct rbNode rbNode;
 
 struct rbNode
@@ -17,21 +16,16 @@ struct rbNode
     sIpv4Prefix     prefix;
 
     /* list of duplicated nodes */
-    rbDuplicateNode* dNodes;
     size_t dNodesCnt; 
+    rbNode* dNodeNext;
+    rbNode* dNodePrev;
 
-    // Node internals
+    // Node RB-tree internals
     unsigned int    maxVal;
     rbNode*         parent;
     rbNode*         left;
     rbNode*         right;
     rbNodeColor     color;
-};
-
-struct rbDuplicateNode
-{
-    rbNode* node;
-    rbDuplicateNode* next;
 };
 
 typedef struct sRedBlackTree

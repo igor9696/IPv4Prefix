@@ -20,7 +20,7 @@ make
 cd test
 ./UT_Prefix
 ```
-4. To run main
+4. To run example
 ```
 build/
 ./prefix

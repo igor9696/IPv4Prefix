@@ -1,28 +1,33 @@
 #include <stdio.h>
 #include "ipv4prefix.h"
 #include "RbTree.h"
+#include <assert.h>
 
 sRedBlackTree* rbTree = NULL;
 
 int main()
 {
+    /* Example */
     int ret = 0;
-    rbTree = createRedBlackTree();
-    
+    unsigned int ip = 541493984;
+    rbTree = createRedBlackTree(); // Red black tree needs to be first allocated
+    assert(rbTree != NULL);
 
     add(541097984, 4);
-    // duplicates
-    add(541097984, 5);
-    add(541097984, 6);
-    add(541097984, 7);
+    add(541297984, 5);
+    add(541397984, 6);
+    add(541497984, 7);
 
-    // node after the one to be deleted
-    rbNode* dNodeAfter = rbTree->_root->dNodeNext->dNodeNext;
+    del(541397984, 5);
 
-    // delete duplicate node
-    del(541097984, 5);
+    ret = check(541493984);
+    if (ret == -1) {
+        printf("Prefix for ip: %u not found!\n", ip);
+    }
+    else {
+        printf("Matched prefix found with mask %d\n", ret);
+    }
 
-    deleteRedBlackTree(rbTree);
-
+    deleteRedBlackTree(rbTree); // to release resources in Tree
     return 0;
 }

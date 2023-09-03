@@ -64,9 +64,16 @@ TEST(ipv4prefix, AddingPrefixThatAlreadyExistsDoesntInsertItAndReturnsErrCode)
 
     ret = add(541097984, 20);
     ret = add(541097984, 20);
-    
     EXPECT_EQ(-1, ret);
     EXPECT_EQ(1, rbTree->_cnt);
+
+    // nodes with the same low key val
+    add(541097984, 16);
+    add(541097984, 15);
+    ret = add(541097984, 15);
+
+    EXPECT_EQ(-1, ret);
+    EXPECT_EQ(3, rbTree->_cnt);
     deleteRedBlackTree(rbTree);
 }
 
@@ -108,6 +115,7 @@ TEST(ipv4prefix, DeletePrefixThatExists_DecrementCounterAndReturn0)
     
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, rbTree->_cnt);
+    EXPECT_TRUE(rbTree->_root == NULL);
 
     deleteRedBlackTree(rbTree);
 }

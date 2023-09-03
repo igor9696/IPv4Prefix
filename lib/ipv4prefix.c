@@ -15,7 +15,7 @@ static unsigned int ShortMaskToExt(char mask)
     return extMask;
 }
 
-static void setupIpDataInNode(rbNode* node, unsigned int base, char mask)
+static void setIpDataInNode(rbNode* node, unsigned int base, char mask)
 {
     unsigned int extMask = ShortMaskToExt(mask);
     unsigned int netIp = base & extMask;
@@ -26,7 +26,6 @@ static void setupIpDataInNode(rbNode* node, unsigned int base, char mask)
     node->prefix.ext_mask = extMask;
     node->prefix.short_mask = mask;
     node->range.diff = node->range.high - node->range.low;
-    printf("debug range low: %u for mask %u\n", node->range.low, node->prefix.short_mask);
 }
 
 int add(unsigned int base, char mask)
@@ -40,11 +39,10 @@ int add(unsigned int base, char mask)
         return -1;
     }
 
-    setupIpDataInNode(node, base, mask);
+    setIpDataInNode(node, base, mask);
     if (0 != insertRbNode(rbTree, node)) {
         return -1;
     }
-
     return 0;
 }
 
@@ -52,19 +50,19 @@ int del(unsigned int base, char mask)
 {
     rbNode node = {0};
     rbNode* foundNode = NULL;
-    setupIpDataInNode(&node, base, mask);
-    if (NULL != (foundNode = searchRbNode(rbTree, &node))) {
+
+    setIpDataInNode(&node, base, mask);
+    if (NULL != (foundNode = findRbNodeInTree(rbTree, &node))) {
         deleteRbNode(rbTree, foundNode);
     } else {
         return -1;
     }
-
     return 0;
 }
 
 char check(unsigned int ip)
 {
-    rbNode* node = getSmallestPrefixForIp(rbTree, ip);
+    rbNode* node = getTheSmallestPrefixForIp(rbTree, ip);
     if (node != NULL) {
         return node->prefix.short_mask;
     } else {

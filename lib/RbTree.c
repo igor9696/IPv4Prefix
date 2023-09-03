@@ -18,7 +18,6 @@ static void deallocDuplicateNodes(rbNode* node)
             it = it->dNodeNext;
             free(prev_it);
         }
-        printf("Duplicate node dealocated!\n");
     }
 }
 
@@ -60,7 +59,7 @@ static void setMaxValInRbNode(rbNode* node)
     unsigned int max = 0;
     if(node->left == NULL && node->right == NULL)
     {
-        return ;
+        return;
     }
     else if (node->left != NULL && node->right != NULL)
     {
@@ -233,6 +232,7 @@ int insertRbNode(sRedBlackTree* rbTree, rbNode* node)
                 x = x->right;
             }
         }
+        
         if( x == NULL) {
             if (node->range.low < y->range.low) {
                 y->left = node;
@@ -241,44 +241,34 @@ int insertRbNode(sRedBlackTree* rbTree, rbNode* node)
                 y->right = node;
             }
 
-            // node->dNodes = NULL;
-            // node->dNodesCnt = 0;
-            // node->left = NULL;
-            // node->right = NULL;
             node->color = RED;
             node->parent = y;
             insertRbNodeFixup(rbTree, node);
 
         } else { // same low key value found, so node could be already added, or it has duplicates
-
             if (x->range.high == node->range.high)
             {
                 // node already exists
-                printf("[DBG] Same node already exists, ret -1\n");
                 return -1;
             }
-
             // traverse dNode list
-            rbNode* it = x;
-            rbNode* prev_it = NULL;
-
-            while (it->dNodeNext != NULL)
+            rbNode* it = x->dNodeNext;
+            rbNode* prev_it = x;
+            while (it != NULL)
             {   
                 prev_it = it;
                 if (it->range.high == node->range.high)
                 {
-                    // node already exists
-                    printf("[DBG] Same node already exists, ret -1\n");
+                    // dnode already exists
                     return -1;
                 }    
                 it = it->dNodeNext;
             }
 
             // assign node 
-            it->dNodeNext = node;
-            it->dNodePrev = prev_it;
+            prev_it->dNodeNext = node;
+            node->dNodePrev = prev_it;
             x->dNodesCnt += 1;
-            printf("[DBG] Duplicate node assigned\n");
         } 
     }
 
@@ -323,6 +313,8 @@ static rbNode* maximumRbNodePtr(rbNode* node)
     return x;
 }
 
+/* func is fixing up violations of red-black properties 
+*  that occured after RED node deletion */
 static void deleteRbNodeFixup(sRedBlackTree* rbTree, rbNode* node)
 {
     rbNode* w = NULL;
@@ -381,6 +373,65 @@ static void deleteRbNodeFixup(sRedBlackTree* rbTree, rbNode* node)
     node->color = BLACK;
 }
 
+static void replaceNodeWithHisFirstDuplicate(sRedBlackTree* rbTree, rbNode* node)
+{
+    rbNode* tmp = node->dNodeNext;
+    tmp->left = node->left;
+    tmp->right = node->right;
+
+    tmp->dNodesCnt = node->dNodesCnt - 1;
+    tmp->dNodeNext = node->dNodeNext->dNodeNext;
+    tmp->dNodeNext->dNodePrev = tmp;
+
+    if (node->left != NULL) {
+        node->left->parent = tmp;
+    }
+    if (node->right != NULL) {
+        node->right->parent = tmp;
+    }
+
+    if (node->parent != NULL) {
+        tmp->parent = node->parent;
+        if (node->parent->left == node) {
+            node->parent->left = tmp;
+        }
+        else {
+            node->parent->right = tmp;
+        }
+    }
+    else {
+        rbTree->_root = tmp;
+    }
+    
+    setMaxValInRbNode(tmp);
+    if (tmp->parent != NULL) {
+        setMaxValInRbNode(tmp->parent);
+    }
+}
+
+static void removeDuplicateNodeFromList(rbNode* node)
+{
+    rbNode* prevdNode = node->dNodePrev;
+    rbNode* it = NULL;
+
+    if(node->dNodeNext != NULL) { // node is not in the end of list
+
+        rbNode* nextdNode = node->dNodeNext;
+        prevdNode->dNodeNext = nextdNode;
+        nextdNode->dNodePrev = prevdNode;
+    } else { // node was the last one
+        prevdNode->dNodeNext = NULL;
+    }
+
+    // find first node in the list and update counters
+    while(prevdNode != NULL) {
+        it = prevdNode;
+        prevdNode = prevdNode->dNodePrev;
+    }
+
+    it->dNodesCnt -= 1;
+}
+
 void deleteRbNode(sRedBlackTree* rbTree, rbNode* node)
 {
     rbNode* y = node;
@@ -388,64 +439,18 @@ void deleteRbNode(sRedBlackTree* rbTree, rbNode* node)
     rbNodeColor y_orginall_color = y->color;
     
     if (rbTree->_cnt == 1) {
-        printf("Deleting root node!\n");
         rbTree->_root = NULL;
         goto Cleanup;
     }
 
-    // if node has allocated duplicates, then replace node with first element from the list
+    // if node has also allocated duplicates, then 
+    // remove node and replace it with first element from the list
     if (node->dNodesCnt != 0) {
-
-        rbNode* tmp = node->dNodeNext;
-        tmp->left = node->left;
-        tmp->right = node->right;
-
-        tmp->dNodesCnt = node->dNodesCnt - 1;
-        tmp->dNodeNext = node->dNodeNext->dNodeNext;
-        tmp->dNodeNext->dNodePrev = tmp;
-
-        if (node->left != NULL) {
-            node->left->parent = tmp;
-        }
-        if (node->right != NULL) {
-            node->right->parent = tmp;
-        }
-
-        if (node->parent != NULL) {
-            tmp->parent = node->parent;
-            if (node->parent->left == node) {
-                node->parent->left = tmp;
-            }
-            else {
-                node->parent->right = tmp;
-            }
-        }
-        else {
-            rbTree->_root = tmp;
-        }
-        setMaxValInRbNode(tmp);
+        replaceNodeWithHisFirstDuplicate(rbTree, node);
         goto Cleanup;
     }
     else if (node->dNodePrev != NULL) { // node for deletion is in duplicated list
-        rbNode* prevdNode = node->dNodePrev;
-        rbNode* it = NULL;
-
-        if(node->dNodeNext != NULL) { // node is not in the end
-
-            rbNode* nextdNode = node->dNodeNext;
-            prevdNode->dNodeNext = nextdNode;
-            nextdNode->dNodePrev = prevdNode;
-        } else { // node was the last one in a list
-            prevdNode->dNodeNext = NULL;
-        }
-
-        // find first node in the list and update counters
-        while(prevdNode != NULL) {
-            it = prevdNode;
-            prevdNode = prevdNode->dNodePrev;
-        }
-
-        it->dNodesCnt -= 1;
+        removeDuplicateNodeFromList(node);
         goto Cleanup;
     }
 
@@ -485,7 +490,7 @@ Cleanup:
     rbTree->_cnt -= 1;
 }
 
-rbNode* searchRbNode(sRedBlackTree* rbTree, rbNode* node)
+rbNode* findRbNodeInTree(sRedBlackTree* rbTree, rbNode* node)
 {   
     rbNode* x = rbTree->_root;
     while (x != NULL && node->range.low != x->range.low)
@@ -523,7 +528,7 @@ rbNode* searchRbNode(sRedBlackTree* rbTree, rbNode* node)
     return NULL;
 }
 
-rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, unsigned int ip)
+rbNode* getTheSmallestPrefixForIp(sRedBlackTree* rbTree, unsigned int ip)
 {
     size_t prefix_range_diff_min = __SIZE_MAX__;
     rbNode* nodeMinPrefix = NULL;
@@ -542,24 +547,19 @@ rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, unsigned int ip)
             }
         }
         else { // matching interval found
-            printf("[DBG] Found node params: range: %u - %u, mask: %u, range diff: %u, ip: %u\n",
-                x->range.low, 
-                x->range.high,
-                x->prefix.short_mask,
-                x->range.diff,
-                ip);
+
             if (x != NULL && (x->range.diff < prefix_range_diff_min))
             {
                 prefix_range_diff_min = x->range.diff;
                 nodeMinPrefix = x;
             }
-
-            // check if found node has duplicates
-            // and if yes then we need to also iterate trough list and check for smallest range diff
+            // if found node has duplicates
+            // then we need to also iterate trough list 
+            // and check for smallest range diff
             if (x->dNodesCnt != 0) {
                 rbNode* y = x->dNodeNext;
                 while(y != NULL) {
-                    printf("[DBG] Iterating trough duplicate list...\n");
+
                     if (y->range.diff < prefix_range_diff_min && 
                         y->range.high >= ip) {
 
@@ -579,14 +579,6 @@ rbNode* getSmallestPrefixForIp(sRedBlackTree* rbTree, unsigned int ip)
             }
         }
     }
-    
-    if (nodeMinPrefix != NULL) {
-        printf("[DBG] Picked node params: range: %u - %u, mask: %u, range diff: %u, ip: %u\n",
-                nodeMinPrefix->range.low, 
-                nodeMinPrefix->range.high,
-                nodeMinPrefix->prefix.short_mask,
-                nodeMinPrefix->range.diff,
-                ip);
-    }
+
     return nodeMinPrefix;
 }   
